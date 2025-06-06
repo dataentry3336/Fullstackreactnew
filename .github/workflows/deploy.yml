@@ -1,0 +1,42 @@
+name: Deploy to AWS ECS
+
+on:
+  push:
+    branches:
+      - main  # Run this workflow on every push to the main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        
+      - name: Set build number
+        run: echo "Run Number:${{ github.run_number }}"
+        
+      - name: Set up AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+       
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1    
+          
+      - name: Build Docker image
+        env:
+          REPO_URI: 600627340343.dkr.ecr.us-east-1.amazonaws.com/my-react-app
+          IMAGE_NAME: ems-frontend
+        run: |
+          docker build --file ./ems-frontend/Dockerfile  -t $IMAGE_NAME:${{ github.run_number }} .
+          docker tag $IMAGE_NAME:${{ github.run_number }} $REPO_URI:${{ github.run_number }}
+
+      - name: Push to Amazon ECR
+        env:
+          REPO_URI: 600627340343.dkr.ecr.us-east-1.amazonaws.com/my-react-app
+        run: |
+          docker push $REPO_URI:${{ github.run_number }}
